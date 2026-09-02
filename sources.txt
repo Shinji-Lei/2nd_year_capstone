@@ -1,0 +1,17 @@
+src/smartcanteen/model/ComboMeal.java
+src/smartcanteen/model/Store.java
+src/smartcanteen/model/SubOrder.java
+src/smartcanteen/model/MenuItem.java
+src/smartcanteen/model/Customer.java
+src/smartcanteen/model/FoodItem.java
+src/smartcanteen/model/MasterReceipt.java
+src/smartcanteen/model/PaymentProcessor.java
+src/smartcanteen/model/BeverageItem.java
+src/smartcanteen/model/SampleData.java
+src/smartcanteen/model/OrderItem.java
+src/smartcanteen/gui/CartPanel.java
+src/smartcanteen/gui/StorePanel.java
+src/smartcanteen/gui/CheckoutDialog.java
+src/smartcanteen/gui/ReceiptDialog.java
+src/smartcanteen/gui/MainFrame.java
+src/smartcanteen/Main.java
