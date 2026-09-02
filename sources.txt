@@ -2,6 +2,7 @@ src/smartcanteen/model/ComboMeal.java
 src/smartcanteen/model/Store.java
 src/smartcanteen/model/SubOrder.java
 src/smartcanteen/model/MenuItem.java
+src/smartcanteen/model/OrderBoard.java
 src/smartcanteen/model/Customer.java
 src/smartcanteen/model/FoodItem.java
 src/smartcanteen/model/MasterReceipt.java
@@ -13,5 +14,7 @@ src/smartcanteen/gui/CartPanel.java
 src/smartcanteen/gui/StorePanel.java
 src/smartcanteen/gui/CheckoutDialog.java
 src/smartcanteen/gui/ReceiptDialog.java
+src/smartcanteen/gui/KitchenStorePanel.java
 src/smartcanteen/gui/MainFrame.java
+src/smartcanteen/gui/KitchenDisplayFrame.java
 src/smartcanteen/Main.java

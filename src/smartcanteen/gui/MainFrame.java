@@ -1,17 +1,19 @@
 package smartcanteen.gui;
 
 import smartcanteen.model.Customer;
+import smartcanteen.model.OrderBoard;
 import smartcanteen.model.OrderItem;
 import smartcanteen.model.SampleData;
 import smartcanteen.model.Store;
 import smartcanteen.model.SubOrder;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -19,72 +21,122 @@ import java.util.Map;
  * Main application window: 5-store tabbed navigation menu + cart sidebar.
  */
 public class MainFrame extends JFrame {
-
-    // Central Color Palette (Accessible by other GUI components)
-    public static final Color BG_DARK = new Color(24, 28, 36);
-    public static final Color PANEL_BG = new Color(33, 39, 50);
-    public static final Color BORDER_COLOR = new Color(50, 55, 65);
-    public static final Color ACCENT_BLUE = new Color(13, 110, 253);
-    public static final Color TEXT_LIGHT = new Color(240, 240, 240);
-    public static final Color TEXT_MUTED = new Color(160, 165, 175);
-
-    // Central Fonts
-    public static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 20);
-    public static final Font TAB_FONT = new Font("Segoe UI", Font.BOLD, 14);
-    public static final Font BODY_FONT = new Font("Segoe UI", Font.PLAIN, 14);
-
-    private java.util.List<Store> stores;
-    private Customer customer;
-    private Map<Store, SubOrder> cart;
-    private CartPanel cartPanel;
+    private final java.util.List<Store> stores;
+    private final Customer customer;
+    private final Map<Store, SubOrder> cart;
+    private final CartPanel cartPanel;
+    private final OrderBoard orderBoard;
     private int subOrderCounter = 0;
+
+    // Modern Tab Navigation State
+    private final CardLayout storeCardLayout = new CardLayout();
+    private final JPanel storeCardContainer = new JPanel(storeCardLayout);
+    private final Map<Store, JButton> navButtons = new HashMap<>();
+    private final JLabel storeLocationLabel = new JLabel();
+    private Store currentSelectedStore;
 
     public MainFrame() {
         super("SmartCanteen - Self-Service Ordering System");
-
         this.stores = SampleData.buildStores();
         this.customer = new Customer("C-0001", "Guest Customer", "N/A");
         this.cart = new LinkedHashMap<>();
+        this.orderBoard = new OrderBoard();
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 750); // Increased default dimensions
-        setMinimumSize(new Dimension(950, 600));
+        setSize(1100, 700);
+        setMinimumSize(new Dimension(850, 550));
         setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
-        // Root Container Setup
-        JPanel rootPanel = new JPanel(new BorderLayout(12, 12));
-        rootPanel.setBackground(BG_DARK);
-        rootPanel.setBorder(new EmptyBorder(12, 12, 12, 12));
+        // Header Panel Construction
+        JPanel header = createHeaderPanel();
+        add(header, BorderLayout.NORTH);
 
-        // 1. TOP: Modern Header Bar
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(PANEL_BG);
-        header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(14, 20, 14, 20)
+        // Center Area: Custom Modern Store Navigation Bar + Store Panels
+        JPanel centerContainer = new JPanel(new BorderLayout());
+        centerContainer.setBackground(new Color(245, 247, 250));
+
+        JPanel navBar = createModernNavBar();
+        centerContainer.add(navBar, BorderLayout.NORTH);
+
+        // Populate Card Container with StorePanels
+        for (Store store : stores) {
+            storeCardContainer.add(new StorePanel(store, this), store.getStoreName());
+        }
+        centerContainer.add(storeCardContainer, BorderLayout.CENTER);
+
+        add(centerContainer, BorderLayout.CENTER);
+
+        // Sidebar Cart Panel
+        cartPanel = new CartPanel(this);
+        add(cartPanel, BorderLayout.EAST);
+
+        // Select initial store tab
+        if (!stores.isEmpty()) {
+            selectStoreTab(stores.get(0));
+        }
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel header = new JPanel(new BorderLayout(15, 0));
+        header.setBackground(new Color(24, 28, 36)); // Dark slate header background
+        header.setBorder(new EmptyBorder(12, 16, 12, 16));
+
+        // Staff Action Button (Left) - Explicit styling for text visibility
+        JButton staffBtn = new JButton("Staff / Kitchen Display");
+        staffBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        staffBtn.setFocusPainted(false);
+        staffBtn.setContentAreaFilled(false);
+        staffBtn.setOpaque(true);
+        staffBtn.setBackground(new Color(45, 52, 64));
+        staffBtn.setForeground(Color.WHITE);
+        staffBtn.setBorder(new CompoundBorder(
+                BorderFactory.createLineBorder(new Color(75, 85, 100), 1),
+                new EmptyBorder(8, 14, 8, 14)
         ));
+        staffBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JLabel title = new JLabel("SmartCanteen \u2014 Cebu Eastern College", SwingConstants.LEFT);
-        title.setFont(TITLE_FONT);
-        title.setForeground(TEXT_LIGHT);
-        header.add(title, BorderLayout.WEST);
+        staffBtn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                staffBtn.setBackground(new Color(60, 70, 85));
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                staffBtn.setBackground(new Color(45, 52, 64));
+            }
+        });
 
-        // Customer Name Input Panel
-        JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        staffBtn.addActionListener(e ->
+                new KitchenDisplayFrame(stores, orderBoard).setVisible(true));
+
+        JPanel staffPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        staffPanel.setOpaque(false);
+        staffPanel.add(staffBtn);
+        header.add(staffPanel, BorderLayout.WEST);
+
+        // Center Title Branding
+        JLabel title = new JLabel("SmartCanteen \u2014 Cebu Eastern College", SwingConstants.CENTER);
+        title.setFont(new Font("SansSerif", Font.BOLD, 18));
+        title.setForeground(Color.WHITE);
+        header.add(title, BorderLayout.CENTER);
+
+        // Right Customer Name Input Panel
+        JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         namePanel.setOpaque(false);
 
         JLabel nameLabel = new JLabel("Customer Name:");
-        nameLabel.setFont(BODY_FONT);
-        nameLabel.setForeground(TEXT_MUTED);
+        nameLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        nameLabel.setForeground(new Color(200, 205, 215));
 
-        JTextField nameField = new JTextField(customer.getName(), 16);
-        nameField.setFont(BODY_FONT);
-        nameField.setBackground(BG_DARK);
-        nameField.setForeground(TEXT_LIGHT);
-        nameField.setCaretColor(TEXT_LIGHT);
-        nameField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                new EmptyBorder(6, 10, 6, 10)
+        JTextField nameField = new JTextField(customer.getName(), 14);
+        nameField.setFont(new Font("SansSerif", Font.BOLD, 12));
+        nameField.setBackground(new Color(36, 42, 54));
+        nameField.setForeground(Color.WHITE);
+        nameField.setCaretColor(Color.WHITE);
+        nameField.setBorder(new CompoundBorder(
+                BorderFactory.createLineBorder(new Color(75, 85, 100), 1),
+                new EmptyBorder(5, 10, 5, 10)
         ));
 
         nameField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -101,23 +153,83 @@ public class MainFrame extends JFrame {
         namePanel.add(nameField);
         header.add(namePanel, BorderLayout.EAST);
 
-        rootPanel.add(header, BorderLayout.NORTH);
+        return header;
+    }
 
-        // 2. CENTER: Tabbed Navigation Pane with Custom Dark UI
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.setFont(TAB_FONT);
-        tabs.setUI(new EnhancedDarkTabbedPaneUI(tabs));
+    /**
+     * Builds the pill-style navigation bar for switching between canteen stores.
+     */
+    private JPanel createModernNavBar() {
+        JPanel navContainer = new JPanel(new BorderLayout());
+        navContainer.setBackground(Color.WHITE);
+        navContainer.setBorder(new CompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(225, 228, 232)),
+                new EmptyBorder(10, 16, 10, 16)
+        ));
+
+        // Pill Tab Button Group
+        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        buttonRow.setOpaque(false);
 
         for (Store store : stores) {
-            tabs.addTab(store.getStoreName(), new StorePanel(store, this));
+            JButton tabBtn = new JButton(store.getStoreName());
+            tabBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+            tabBtn.setFocusPainted(false);
+            tabBtn.setBorderPainted(false);
+            tabBtn.setContentAreaFilled(false);
+            tabBtn.setOpaque(true);
+            tabBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            tabBtn.setMargin(new Insets(8, 16, 8, 16));
+
+            tabBtn.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    if (!store.equals(currentSelectedStore)) {
+                        tabBtn.setBackground(new Color(225, 230, 236));
+                    }
+                }
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (!store.equals(currentSelectedStore)) {
+                        tabBtn.setBackground(new Color(240, 243, 246));
+                    }
+                }
+            });
+
+            tabBtn.addActionListener(e -> selectStoreTab(store));
+            navButtons.put(store, tabBtn);
+            buttonRow.add(tabBtn);
         }
-        rootPanel.add(tabs, BorderLayout.CENTER);
 
-        // 3. EAST: Cart Sidebar
-        cartPanel = new CartPanel(this);
-        rootPanel.add(cartPanel, BorderLayout.EAST);
+        // Active Store Subtitle / Location Chip
+        storeLocationLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        storeLocationLabel.setForeground(new Color(108, 117, 125));
 
-        setContentPane(rootPanel);
+        navContainer.add(buttonRow, BorderLayout.WEST);
+        navContainer.add(storeLocationLabel, BorderLayout.EAST);
+
+        return navContainer;
+    }
+
+    /**
+     * Updates navigation tab highlight states and switches store views.
+     */
+    private void selectStoreTab(Store store) {
+        this.currentSelectedStore = store;
+
+        for (Map.Entry<Store, JButton> entry : navButtons.entrySet()) {
+            JButton btn = entry.getValue();
+            if (entry.getKey().equals(store)) {
+                btn.setBackground(new Color(24, 28, 36));
+                btn.setForeground(Color.WHITE);
+            } else {
+                btn.setBackground(new Color(240, 243, 246));
+                btn.setForeground(new Color(80, 88, 100));
+            }
+        }
+
+        storeLocationLabel.setText("Location: " + store.getLocation() + "  ");
+        storeCardLayout.show(storeCardContainer, store.getStoreName());
     }
 
     public void addToCart(Store store, smartcanteen.model.MenuItem item, int qty) {
@@ -138,130 +250,12 @@ public class MainFrame extends JFrame {
         return customer;
     }
 
+    public OrderBoard getOrderBoard() {
+        return orderBoard;
+    }
+
     public void clearCart() {
         cart.clear();
         cartPanel.refresh();
-    }
-
-    /**
-     * Enhanced Custom Tabbed UI: Adds active accent indicators, mouse hover effects,
-     * enlarged padding, and enforces dark colors over native L&F rendering.
-     */
-    private static class EnhancedDarkTabbedPaneUI extends BasicTabbedPaneUI {
-        private int hoveredIndex = -1;
-
-        public EnhancedDarkTabbedPaneUI(JTabbedPane tabbedPane) {
-            tabbedPane.addMouseMotionListener(new MouseAdapter() {
-                @Override
-                public void mouseMoved(MouseEvent e) {
-                    int index = tabbedPane.indexAtLocation(e.getX(), e.getY());
-                    if (index != hoveredIndex) {
-                        hoveredIndex = index;
-                        tabbedPane.repaint();
-                    }
-                }
-            });
-            tabbedPane.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    if (hoveredIndex != -1) {
-                        hoveredIndex = -1;
-                        tabbedPane.repaint();
-                    }
-                }
-            });
-        }
-
-        @Override
-        protected void installDefaults() {
-            super.installDefaults();
-            tabAreaInsets = new Insets(6, 6, 0, 6);
-            selectedTabPadInsets = new Insets(0, 0, 0, 0);
-            contentBorderInsets = new Insets(1, 1, 1, 1);
-        }
-
-        @Override
-        protected int calculateTabHeight(int tabPlacement, int tabIndex, int fontHeight) {
-            return super.calculateTabHeight(tabPlacement, tabIndex, fontHeight) + 16; // Generous height padding
-        }
-
-        @Override
-        protected int calculateTabWidth(int tabPlacement, int tabIndex, FontMetrics metrics) {
-            return super.calculateTabWidth(tabPlacement, tabIndex, metrics) + 24; // Generous width padding
-        }
-
-        @Override
-        protected void paintTabBackground(Graphics g, int tabPlacement, int tabIndex,
-                                          int x, int y, int w, int h, boolean isSelected) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            if (isSelected) {
-                g2.setColor(PANEL_BG);
-            } else if (tabIndex == hoveredIndex) {
-                g2.setColor(new Color(40, 47, 60)); // Subtle hover highlight
-            } else {
-                g2.setColor(BG_DARK);
-            }
-
-            g2.fillRect(x, y, w, h);
-            g2.dispose();
-        }
-
-        @Override
-        protected void paintTabBorder(Graphics g, int tabPlacement, int tabIndex,
-                                      int x, int y, int w, int h, boolean isSelected) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g2.setColor(BORDER_COLOR);
-            g2.drawRect(x, y, w - 1, h);
-
-            if (isSelected) {
-                g2.setColor(ACCENT_BLUE);
-                g2.fillRect(x, y, w - 1, 4); // Thicker primary blue accent bar on top
-            }
-
-            g2.dispose();
-        }
-
-        @Override
-        protected void paintText(Graphics g, int tabPlacement, Font font,
-                                 FontMetrics metrics, int tabIndex, String title,
-                                 Rectangle textRect, boolean isSelected) {
-            g.setFont(font);
-            if (isSelected) {
-                g.setColor(TEXT_LIGHT);
-            } else if (tabIndex == hoveredIndex) {
-                g.setColor(Color.WHITE);
-            } else {
-                g.setColor(TEXT_MUTED);
-            }
-            g.drawString(title, textRect.x, textRect.y + metrics.getAscent());
-        }
-
-        @Override
-        protected void paintFocusIndicator(Graphics g, int tabPlacement, Rectangle[] rects,
-                                           int tabIndex, Rectangle iconRect, Rectangle textRect,
-                                           boolean isSelected) {
-            // Disabled default dotted focus ring
-        }
-
-        @Override
-        protected void paintContentBorder(Graphics g, int tabPlacement, int selectedIndex) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setColor(BORDER_COLOR);
-            int width = tabPane.getWidth();
-            int height = tabPane.getHeight();
-            Insets insets = tabPane.getInsets();
-
-            int x = insets.left;
-            int y = insets.top + calculateTabAreaHeight(tabPlacement, runCount, maxTabHeight);
-            int w = width - insets.left - insets.right;
-            int h = height - y - insets.bottom;
-
-            g2.drawRect(x, y, w - 1, h - 1);
-            g2.dispose();
-        }
     }
 }
